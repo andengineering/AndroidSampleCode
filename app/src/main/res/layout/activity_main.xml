@@ -11,6 +11,28 @@
 
 
     <Button
+        android:id="@+id/PairButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="26dp"
+        android:layout_marginRight="26dp"
+        android:text="Pair" />
+
+    <Button
+        android:id="@+id/getData"
+        android:layout_below="@id/PairButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginLeft="26dp"
+        android:layout_marginRight="26dp"
+        android:text="Take Reading" />
+
+    <Button
         android:id="@+id/startButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
