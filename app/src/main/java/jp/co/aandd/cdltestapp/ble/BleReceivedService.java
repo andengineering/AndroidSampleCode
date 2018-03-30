@@ -35,32 +35,13 @@ public class BleReceivedService extends Service {
         private static final String TAG = "SN";
 
         public static final String ACTION_BLE_SERVICE = "jp.co.aandd.andblelink.ble.BLE_SERVICE";
-        public static final String TYPE_LOG = "TYPE_LOG";
-        public static final String TYPE_GATT_CONNECTED = "Connected device";
-        public static final String TYPE_GATT_DISCONNECTED = "Disconnected device";
-        public static final String TYPE_GATT_ERROR = "Gatt Error";
-        public static final String TYPE_CHARACTERISTIC_CHANGED = "Characteristic changed";
-        public static final String TYPE_DESCRIPTOR_READ = "Read descriptor";
-        public static final String TYPE_INDICATION_VALUE = "Indication Value";
-        public static final String EXTRA_TYPE = "EXTRA_TYPE";
-        public static final String EXTRA_VALUE = "EXTRA_VALUE";
-        public static final String EXTRA_SERVICE_UUID = "EXTRA_SERVICE_UUID";
-        public static final String EXTRA_CHARACTERISTIC_UUID = "EXTRA_CHARACTERISTIC_UUID";
-        public static final String EXTRA_STATUS = "EXTRA_STATUS";
-        public static final String EXTRA_ADDRESS = "EXTRA_ADDRESS";
-
-
         private static BleReceivedService bleService;
         private BluetoothGatt bluetoothGatt;
         private boolean isConnectedDevice;
         private boolean isBindService;
-
-
         private Handler uiThreadHandler = new Handler();
         private long setDateTimeDelay = Long.MIN_VALUE;
         private long indicationDelay = Long.MIN_VALUE;
-
-
 
         public static BleReceivedService getInstance() {
             return bleService;
@@ -177,7 +158,7 @@ public class BleReceivedService extends Service {
                         uiThreadHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                //AC-96 Fix for the app crash
+
                                 if (BleReceivedService.getGatt() != null) {
                                     BleReceivedService.getGatt().discoverServices();
                                 }
@@ -379,8 +360,64 @@ public class BleReceivedService extends Service {
 
             if (ADGattUUID.AndCustomWeightScaleMeasurement.equals(characteristic.getUuid())) {
                 Log.d("Sim","reading for WS received");
+                int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+                String flagString = Integer.toBinaryString(flag);
+                int offset=0;
+                for(int index = flagString.length(); 0 < index ; index--) {
+                    String key = flagString.substring(index-1 , index);
+                    if(index == flagString.length()) {
+                        double convertValue = 0;
+                        if(key.equals("0")) {
+                           convertValue = 0.1f;
+                        }
+                        else {
+                            convertValue = 0.1f;
+                        }
+                        // Unit
+                        offset+=1;
+
+                        // Value
+                        double value = (double)(characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset)) * convertValue;
+                        Log.d("SN", "Weight Value :"+value);
+                        offset+=2;
+                    }
+                    else if(index == flagString.length()-1) {
+                        if(key.equals("1")) {
+                            Log.d("SN", "Y :"+String.format("%04d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset)));
+                            offset+=2;
+                            Log.d("SN", "M :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "D :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "H :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "M :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "S :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                        }
+                        else {
+                            //Implies put the calendar date as the one
+                            Calendar calendar = Calendar.getInstance(Locale.getDefault());
+
+                        }
+                    }
+                    else if(index == flagString.length()-2) {
+                        if(key.equals("1")) {
+                            Log.d("SN", "ID :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                        }
+                    }
+                    else if(index == flagString.length()-3) {
+                        if(key.equals("1")) {
+                            // BMI and Height
+                        }
+                    }
+                }
 
             }
+
+
             else if (ADGattUUID.BloodPressureMeasurement.equals(characteristic.getUuid())) {
                 Log.d("Sim","reading for BP is received");
                 int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
@@ -481,6 +518,65 @@ public class BleReceivedService extends Service {
             }
             else if (ADGattUUID.WeightScaleMeasurement.equals(characteristic.getUuid())) {
                 Log.d("Sim","reading for WS standard is received");
+                Bundle bundle = new Bundle();
+                int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+                String flagString = Integer.toBinaryString(flag);
+                int offset=0;
+                for(int index = flagString.length(); 0 < index ; index--) {
+                    String key = flagString.substring(index-1 , index);
+
+                    if(index == flagString.length()) {
+                        double convertValue = 0;
+                        if(key.equals("0")) {
+                            convertValue = 0.005f;
+                        }
+                        else {
+                            convertValue = 0.01f;
+                        }
+                        // Unit
+                        offset+=1;
+
+                        // Value
+                        double value = (double)(characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset)) * convertValue;
+                        Log.d("SN", "Weight value :"+value);
+                        offset+=2;
+                    }
+                    else if(index == flagString.length()-1) {
+                        if(key.equals("1")) {
+
+                            Log.d("SN", "Y :"+String.format("%04d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset)));
+                            offset+=2;
+                            Log.d("SN", "M :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "D :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+
+                            Log.d("SN", "H :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "M :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                            Log.d("SN", "S :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                        }
+                        else {
+                            //Get the default date and time
+                            Calendar calendar = Calendar.getInstance(Locale.getDefault());
+
+                        }
+                    }
+                    else if(index == flagString.length()-2) {
+                        if(key.equals("1")) {
+                            Log.d("SN", "ID :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
+                            offset+=1;
+                        }
+                    }
+                    else if(index == flagString.length()-3) {
+                        if(key.equals("1")) {
+                            // BMI and Height
+                        }
+                    }
+                }
+
 
             }
 
