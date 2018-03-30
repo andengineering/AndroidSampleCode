@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="firm_revision_group1">
+        <item>@string/blp008_d016</item>
+        <item>@string/blp008_d017</item>
+        <item>@string/htp008_134</item>
+        <item>@string/cwsp008_108</item>
+        <item>@string/cwsp008_110</item>
+        <item>@string/wsp001_201</item>
+    </string-array>
+    <string name="blp008_d016">BLP008_d016 </string>
+    <string name="blp008_d017">BLP008_d017 </string>
+    <string name="htp008_134">HTP008_134</string>
+    <string name="cwsp008_108">CWSP008_108 </string>
+    <string name="cwsp008_110">CWSP008_110 </string>
+    <string name="wsp001_201">WSP001_201</string>
+</resources>

@@ -1,0 +1,11 @@
+To connect BLE device, CDL below steps.
+
+1. Connect
+ |
+ | To adjust delay time, Use "DISCOVER_SERVICES_INTERVAL"
+ |
+2. Discover service
+ |
+ | To adjust delay time, Use "TIME_ANDCCCD_DELAY"
+ |
+3. Command

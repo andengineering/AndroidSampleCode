@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    tools:context=".MainActivity">
+
+
+    <Button
+        android:id="@+id/startButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginLeft="26dp"
+        android:layout_marginRight="26dp"
+        android:text="Start" />
+
+    <Switch android:id="@+id/dummyUserSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/switch_fix"
+        android:layout_above="@id/startButton"
+        android:gravity="center"
+        />
+
+    <EditText
+        android:id="@+id/dummyUserNicknameEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/dummyUserSwitch"
+        android:text="ANDMedical"
+        android:digits="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ _-.0123456789"
+        android:inputType="textNoSuggestions"
+        android:maxLength="10"
+        android:singleLine="true"
+        />
+
+    <ListView
+        android:id="@+id/listview1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/dummyUserNicknameEditText"
+        android:layout_alignParentTop="true"
+        android:text="@string/hello_world" />
+
+</RelativeLayout>
