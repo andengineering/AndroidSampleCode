@@ -42,6 +42,7 @@ public class BleReceivedService extends Service {
         private Handler uiThreadHandler = new Handler();
         private long setDateTimeDelay = Long.MIN_VALUE;
         private long indicationDelay = Long.MIN_VALUE;
+        public String operation;
 
         public static BleReceivedService getInstance() {
             return bleService;
@@ -112,12 +113,27 @@ public class BleReceivedService extends Service {
         }
 
         public boolean connectDevice(BluetoothDevice device) {
+            final BluetoothDevice bdevice = device;
             Log.d(TAG, "connectDevice device " + device);
             if (device == null) {
                 return false;
             }
+            if (operation.equalsIgnoreCase("pair")) {
+                Log.d("AD","The operation is pair");
+                new Handler().postDelayed(new Runnable() {
 
-            bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback);
+                    @Override
+                    public void run() {
+                        Log.d("Sim","Calling other devices for pairing");
+
+                        bluetoothGatt = bdevice.connectGatt(getApplicationContext(), false, bluetoothGattCallback);
+                    }
+                }, 500);
+            } else {
+                bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback);
+
+            }
+
             Log.d(TAG, "bluetoothGatt " + bluetoothGatt);
             if (bluetoothGatt == null) {
                 return false;
@@ -153,19 +169,27 @@ public class BleReceivedService extends Service {
                     Log.d(TAG, "Device Address : "+bluetoothGatt.getDevice().getAddress());
                     Log.d(TAG, "Bond Status: "+bluetoothGatt.getDevice().getBondState());
                     //Connected now discover services
-                    if (BleReceivedService.getGatt() != null) {
-                        //BleReceivedService.getGatt().discoverServices();
-                        uiThreadHandler.postDelayed(new Runnable() {
-                            @Override
-                            public void run() {
+                    if (operation.equalsIgnoreCase("pair")) {
+                        Log.d("AD","Calling service discovery for pairing");
+                        if (BleReceivedService.getGatt() != null) {
+                            BleReceivedService.getGatt().discoverServices();
+                        }
+                    } else if(operation.equalsIgnoreCase("data")) {
+                        if (BleReceivedService.getGatt() != null) {
+                            //BleReceivedService.getGatt().discoverServices();
+                            uiThreadHandler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
 
-                                if (BleReceivedService.getGatt() != null) {
-                                    BleReceivedService.getGatt().discoverServices();
+                                    if (BleReceivedService.getGatt() != null) {
+                                        BleReceivedService.getGatt().discoverServices();
+                                    }
+
                                 }
-
-                            }
-                        }, 2000);
+                            }, 2000);
+                        }
                     }
+
                 }
                 else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                     isConnectedDevice = false;
@@ -183,15 +207,21 @@ public class BleReceivedService extends Service {
             public void onServicesDiscovered(BluetoothGatt gatt, int status) {
                 BluetoothDevice device = gatt.getDevice();
                 Log.d(TAG, "onServicesDiscovered()" + device.getAddress() + ", " + device.getName() + ", status=" + status);
-               // setupDateTime(gatt);
-                if (BleReceivedService.getInstance() != null) {
-                    uiThreadHandler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            BleReceivedService.getInstance().requestReadFirmRevision();
-                        }
-                    }, 50L);
+
+                if (operation.equalsIgnoreCase("pair")){
+                    Log.d("AD","Case of pair hence set time");
+                    setupDateTime(gatt);
+                } else if (operation.equalsIgnoreCase("data")){
+                    if (BleReceivedService.getInstance() != null) {
+                        uiThreadHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                BleReceivedService.getInstance().requestReadFirmRevision();
+                            }
+                        }, 50L);
+                    }
                 }
+
             }
 
             @Override
@@ -251,8 +281,13 @@ public class BleReceivedService extends Service {
                 Log.d(TAG, "onCharacteristicWrite()" + device.getAddress() + ", " + device.getName() + "characteristic=" + characteristic.getUuid().toString());
                 String serviceUuidString = characteristic.getService().getUuid().toString();
                 String characteristicUuidString = characteristic.getUuid().toString();
-                if (serviceUuidString.equals(ADGattUUID.CurrentTimeService.toString())
-                        || characteristicUuidString.equals(ADGattUUID.DateTime.toString()) ) {
+                if (operation.equalsIgnoreCase("pair")){
+                    Log.d("AD","OnCharacteristic write for pairing aftrer time is set");
+                    disconnectDevice();
+                } else if (operation.equalsIgnoreCase("data")) {
+                    Log.d("AD","entering the condition of getting data");
+                    if (serviceUuidString.equals(ADGattUUID.CurrentTimeService.toString())
+                            || characteristicUuidString.equals(ADGattUUID.DateTime.toString()) ) {
 
                         uiThreadHandler.postDelayed(new Runnable() {
                             @Override
@@ -266,6 +301,7 @@ public class BleReceivedService extends Service {
                             }
                         }, indicationDelay);
 
+                    }
                 }
 
             }
@@ -281,17 +317,31 @@ public class BleReceivedService extends Service {
             public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 BluetoothDevice device = gatt.getDevice();
                 Log.d(TAG, "onDescriptorRead()" + device.getAddress() + ", " + device.getName() + "characteristic=" + descriptor.getCharacteristic().getUuid().toString());
+                BluetoothGattService gattService = getGattSearvice(gatt);
+                if (gattService != null) {
+                    if(operation.equalsIgnoreCase("pair")) {
+                        //TODO: If there is a separate pairing screen, then issue a device disconnect here.
+                        operation = null;
+                        if (gatt != null) {
+                            gatt.disconnect();
+                            gatt.close();
+                            gatt = null;
+                        }
+                        disconnectDevice();
+
+
+                    } else {
+                        //Nothing to do since its not a pairing case.
+                    }
+
+                }
             }
 
             @Override
             public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
                 BluetoothDevice device = gatt.getDevice();
                 Log.d(TAG, "onDescriptorWrite()" + device.getAddress() + ", " + device.getName() + "characteristic=" + descriptor.getCharacteristic().getUuid().toString());
-                BluetoothGattService gattService = getGattSearvice(gatt);
-                if (gattService != null) {
 
-                  //TODO: If there is a separate pairing screen, then issue a device disconnect here.
-                }
 
             }
 
@@ -333,6 +383,7 @@ public class BleReceivedService extends Service {
                 if(service != null) {
                     BluetoothGattCharacteristic characteristic = BleReceivedService.getInstance().getGattMeasuCharacteristic(service);
                     if(characteristic != null) {
+
                         isSuccess = gatt.setCharacteristicNotification(characteristic, enable);
                         BluetoothGattDescriptor descriptor = characteristic.getDescriptor(ADGattUUID.ClientCharacteristicConfiguration);
                         if(enable) {

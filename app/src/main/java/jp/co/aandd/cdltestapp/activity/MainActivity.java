@@ -52,6 +52,8 @@ public class MainActivity extends Activity {
     private boolean isStartedScan;
     private boolean mIsBleReceiver = false;
     private boolean mIsBindBleReceivedServivce = false;
+    private String operation;
+    Button pairButton, dataButton;
 
 
     @Override
@@ -59,6 +61,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         disabledButton();
+
         initDeviceInfoMap();
         initListView();
         initUserSwitch();
@@ -84,12 +87,43 @@ public class MainActivity extends Activity {
             }
         }
 
+        //Declare the pair or connect button
+        pairButton = (Button) findViewById(R.id.PairButton);
+        pairButton.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+                Log.d("AD","User has clicked on the pair button");
+                operation = "pair";
+                BleReceivedService.getInstance().operation = "pair";
+                enabledButton();
+
+            }
+        });
+
+        dataButton = (Button) findViewById(R.id.getData);
+        dataButton.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+                Log.d("AD","User has clicked on the data button");
+                operation = "data";
+                BleReceivedService.getInstance().operation = "data";
+                enabledButton();
+
+            }
+        });
+        pairButton.setVisibility(View.VISIBLE);
+        dataButton.setVisibility(View.VISIBLE);
+
+
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        enabledButton();
+        disabledButton();
+        pairButton.setVisibility(View.VISIBLE);
+        dataButton.setVisibility(View.VISIBLE);
+        //enabledButton();
         doBindBleReceivedService();
     }
 
@@ -102,7 +136,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        unregisterReceiver(broadcastReceiver);
+        //unregisterReceiver(broadcastReceiver); //Register this receiver later
     }
 
     private void initDeviceInfoMap() {
@@ -131,8 +165,6 @@ public class MainActivity extends Activity {
                 }, 300);
 
                 BleDeviceItem item = (BleDeviceItem) bleDeviceAdapter.getItem(position);
-
-
                 bluetoothManager.getAdapter().stopLeScan(leScanCallback);
                 isStartedScan = false;
                 Button button = (Button) findViewById(R.id.startButton);
@@ -143,9 +175,13 @@ public class MainActivity extends Activity {
 
                 bleDeviceAdapter.clearList();
                 bleDeviceAdapter.notifyDataSetChanged();
-
-                BleReceivedService.getInstance().connectDevice(device);
-                /*runOnUiThread(new Runnable() {
+                if (operation.equalsIgnoreCase("pair")) {
+                    Log.d("AD","case of pair operation");
+                    BleReceivedService.getInstance().connectDevice(device);
+                } else if (operation.equalsIgnoreCase("data")) {
+                    final BluetoothDevice bdevice = device;
+                    Log.d("AD","case of data operation");
+                      runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                         doStopLeScan();
@@ -155,9 +191,12 @@ public class MainActivity extends Activity {
                             e.printStackTrace();
                         }
                         Log.d("Sim","Connecting device");
-                        BleReceivedService.getInstance().connectDevice(device);
+                        BleReceivedService.getInstance().connectDevice(bdevice);
                     }
-                }); */
+                });
+
+                }
+
 
             }
         });
@@ -196,6 +235,16 @@ public class MainActivity extends Activity {
     private final View.OnClickListener onClickListener = new View.OnClickListener() {
         @Override
         public void onClick(final View v) {
+                if (operation == null) {
+                    Toast.makeText(getApplicationContext(), "Please click on the Pair or Take Reading button", Toast.LENGTH_SHORT).show();
+                    return;
+                } else {
+                    Log.d("AD","The value of operation is " + operation);
+                    pairButton.setVisibility(View.GONE);
+                    dataButton.setVisibility(View.GONE);
+                }
+
+
             v.setEnabled(false);
             new Handler().postDelayed(new Runnable() {
                 @Override
@@ -218,6 +267,7 @@ public class MainActivity extends Activity {
                 button.setText(getResources().getString(R.string.button_start));
                 bleDeviceAdapter.clearList();
                 bleDeviceAdapter.notifyDataSetChanged();
+
             }
         }
     };
@@ -257,120 +307,7 @@ public class MainActivity extends Activity {
         }
     };
 
-    public static void readCharacteristicCoolDesign(BluetoothGattCharacteristic characteristic) {
 
-        Bundle bundle = new Bundle();
-        int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-
-        String flagString = Integer.toBinaryString(flag);
-        int offset=0;
-        for(int index = flagString.length(); 0 < index ; index--) {
-            String key = flagString.substring(index-1 , index);
-
-            if(index == flagString.length()) {
-                if(key.equals("0")) {
-                    // mmHg
-                    Log.d("CDL-Unit", "mmHg");
-
-                }
-                else {
-                    // kPa
-                    Log.d("CDL-Unit", "kPa");
-
-                }
-                // Unit
-                offset+=1;
-                Log.d("SN", "Systolic :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
-                offset+=2;
-                Log.d("SN", "Diastolic :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
-                offset+=2;
-                Log.d("SN", "Mean Arterial Pressure :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
-                offset+=2;
-            }
-            else if(index == flagString.length()-1) {
-                if(key.equals("1")) {
-                    // Time Stamp
-                    Log.d("SN", "Year :"+String.format("%04d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset)));
-                    offset+=2;
-                    Log.d("SN", "Month :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
-                    offset+=1;
-                    Log.d("SN", "Day :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
-                    offset+=1;
-
-                    Log.d("SN", "Hour :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
-                    offset+=1;
-                    Log.d("SN", "Min :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
-                    offset+=1;
-                    Log.d("SN", "Sec :"+String.format("%02d", characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, offset)));
-                    offset+=1;
-                }
-                else {
-                    // 日時が存在しない場合、現在日時を格納する。
-                    Calendar calendar = Calendar.getInstance(Locale.getDefault());
-
-                }
-            }
-            else if(index == flagString.length()-2) {
-                if(key.equals("1")) {
-                    // Pulse Rate
-                    Log.d("SN", "Pulse Rate :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
-                    offset+=2;
-                }
-            }
-            else if(index == flagString.length()-3) {
-                // UserID
-            }
-            else if(index == flagString.length()-4) {
-                // Measurement Status Flag
-                int statusFalg = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
-                String statusFlagString = Integer.toBinaryString(statusFalg);
-                for(int i = statusFlagString.length(); 0 < i ; i--) {
-                    String status = statusFlagString.substring(i-1 , i);
-                    if(i == statusFlagString.length()) {
-                        int body_mov = (status.endsWith("1"))? 1 : 0;
-                        Log.d("SN","KEY_BODY_MOVEMENT_DETECTION" + body_mov );
-
-                    }
-                    else if(i == statusFlagString.length() - 1) {
-                        int cuff_fit = (status.endsWith("1"))? 1 : 0;
-                        Log.d("SN","KEY_CUFF_FIT_DETECTION" + cuff_fit );
-
-                    }
-                    else if(i == statusFlagString.length() - 2) {
-                        int irregular_pul = (status.endsWith("1"))? 1 : 0;
-                        Log.d("SN","KEY_IRREGULAR_PULSE_DETECTION" + irregular_pul );
-
-                    }
-                    else if(i == statusFlagString.length() - 3) {
-                        i--;
-                        String secondStatus = statusFlagString.substring(i-1 , i);
-                        if(status.endsWith("1") && secondStatus.endsWith("0")) {
-                            int pulser_rate_range_detection = 1;
-
-                        }
-                        else if(status.endsWith("0") && secondStatus.endsWith("1")) {
-                            int pulse_rate_range_detection = 2;
-
-                        }
-                        else if(status.endsWith("1") && secondStatus.endsWith("1")) {
-                            int pulse_rate_range_detection = 3;
-                        }
-                        else {
-                            int pulse_rate_range_detection = 0;
-                        }
-                    }
-                    else if(i == statusFlagString.length() - 5) {
-                        int measurement_position = (status.endsWith("1"))? 1 : 0;
-                        Log.d("SN","KEY_MEASUREMENT_POSITION_DETECTION" + measurement_position );
-
-                    }
-                }
-            }
-        }
-        //Sim writing the device ID;
-
-
-    }
 
     private void doStopLeScan() {
         if (isStartedScan) {
