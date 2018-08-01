@@ -275,10 +275,11 @@ public class MainActivity extends Activity {
     private final BluetoothAdapter.LeScanCallback leScanCallback = new BluetoothAdapter.LeScanCallback() {
         @Override
         public void onLeScan(BluetoothDevice device, int rssi, byte[] scanRecord) {
+
             final String deviceMacAddress = device.getAddress();
             final int deviceRssi = rssi;
             final BluetoothDevice bleDevice = device;
-
+            Log.d("AD","Entered the onLeScan function");
             new Handler(Looper.getMainLooper()).post(new Runnable() {
 
                 @Override

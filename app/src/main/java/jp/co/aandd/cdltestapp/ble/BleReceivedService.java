@@ -130,6 +130,7 @@ public class BleReceivedService extends Service {
                     }
                 }, 500);
             } else {
+                Log.d("AD","Calling the connectGatt for data transfer");
                 bluetoothGatt = device.connectGatt(this, false, bluetoothGattCallback);
 
             }
@@ -182,6 +183,7 @@ public class BleReceivedService extends Service {
                                 public void run() {
 
                                     if (BleReceivedService.getGatt() != null) {
+                                        Log.d("AD","calling the discover services");
                                         BleReceivedService.getGatt().discoverServices();
                                     }
 
@@ -212,10 +214,12 @@ public class BleReceivedService extends Service {
                     Log.d("AD","Case of pair hence set time");
                     setupDateTime(gatt);
                 } else if (operation.equalsIgnoreCase("data")){
+                    Log.d(TAG,"entered case of onservice discovered with data");
                     if (BleReceivedService.getInstance() != null) {
                         uiThreadHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
+                                Log.d("Sim","calling the readrequestfirmware version");
                                 BleReceivedService.getInstance().requestReadFirmRevision();
                             }
                         }, 50L);
@@ -261,6 +265,7 @@ public class BleReceivedService extends Service {
                         BluetoothGatt gatt = BleReceivedService.getGatt();
                         boolean settingResult = false;
                         if (gatt != null) {
+                            Log.d(TAG,"calling the setUpdatetime operation");
                             settingResult = setupDateTime(gatt);
 
                         }
@@ -293,6 +298,7 @@ public class BleReceivedService extends Service {
                             @Override
                             public void run() {
                                 BluetoothGatt gatt = BleReceivedService.getGatt();
+                                Log.d(TAG,"enabling the setIndication");
                                 boolean writeResult =setIndication(gatt, true);
                                 if(writeResult == false) {
                                     Log.d(TAG, "Write Error");
@@ -640,6 +646,7 @@ public class BleReceivedService extends Service {
                 if (service != null) {
                     BluetoothGattCharacteristic characteristic = service.getCharacteristic(ADGattUUID.FirmwareRevisionString);
                     if (characteristic != null) {
+                        Log.d(TAG,"calling the requestRead ");
                         bluetoothGatt.readCharacteristic(characteristic);
                     }
                 }
@@ -662,6 +669,7 @@ public class BleReceivedService extends Service {
             if(gattService != null) {
                 BluetoothGattCharacteristic characteristic = gattService.getCharacteristic(ADGattUUID.DateTime);
                 if(characteristic != null) {
+                    Log.d(TAG,"calling the set date time write characteristic");
                     characteristic = datewriteCharacteristic(characteristic, cal);
                     isSuccess = gatt.writeCharacteristic(characteristic);
                 }
