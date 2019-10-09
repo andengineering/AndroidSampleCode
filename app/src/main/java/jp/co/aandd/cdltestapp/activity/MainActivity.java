@@ -35,33 +35,48 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.UUID;
 
+import jp.co.aandd.cdltestapp.PairConnectActivity;
 import jp.co.aandd.cdltestapp.R;
 import jp.co.aandd.cdltestapp.ble.BleDeviceAdapter;
 import jp.co.aandd.cdltestapp.ble.BleDeviceItem;
 import jp.co.aandd.cdltestapp.ble.BleReceivedService;
-
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanSettings;
+import android.os.ParcelUuid;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.bluetooth.BluetoothManager;
 
 public class MainActivity extends Activity {
 
-    private final String TAG = "CDLTestApp:MainActivity";
+    private final String TAG = "TestApp:MainActivity";
 
     private LinkedHashMap<String, BleDeviceItem> deviceInfoMap;
 
     private BleDeviceAdapter bleDeviceAdapter;
     private BluetoothManager bluetoothManager;
-    private boolean isStartedScan;
+    private BluetoothDevice mDevice;
+
+    private boolean isStartedScan = false;
     private boolean mIsBleReceiver = false;
     private boolean mIsBindBleReceivedServivce = false;
     private String operation;
     Button pairButton, dataButton;
+    static final int BLUETOOTH_ACTION_CHOSEN = 0;
+    public static final UUID BloodPressureService = uuidFromShortString("1810");
+    public static final UUID WeightScaleService = uuidFromShortString("181d");
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        disabledButton();
-
+      //  disabledButton();
+        enabledButton();
+        isStartedScan = false;
         initDeviceInfoMap();
         initListView();
         initUserSwitch();
@@ -111,8 +126,8 @@ public class MainActivity extends Activity {
 
             }
         });
-        pairButton.setVisibility(View.VISIBLE);
-        dataButton.setVisibility(View.VISIBLE);
+        pairButton.setVisibility(View.INVISIBLE);
+        dataButton.setVisibility(View.INVISIBLE);
 
 
     }
@@ -120,9 +135,11 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        disabledButton();
-        pairButton.setVisibility(View.VISIBLE);
-        dataButton.setVisibility(View.VISIBLE);
+       // disabledButton();
+        enabledButton();
+        isStartedScan = false;
+        pairButton.setVisibility(View.INVISIBLE);
+        dataButton.setVisibility(View.INVISIBLE);
         //enabledButton();
         doBindBleReceivedService();
     }
@@ -155,14 +172,14 @@ public class MainActivity extends Activity {
             @Override
             public void onItemClick(AdapterView<?> parent, final View view, int position, long id) {
 
-                view.setEnabled(false);
+                /*view.setEnabled(false);
 
                 new Handler().postDelayed(new Runnable() {
                     @Override
                     public void run() {
                         view.setEnabled(true);
                     }
-                }, 300);
+                }, 300);*/
 
                 BleDeviceItem item = (BleDeviceItem) bleDeviceAdapter.getItem(position);
                 bluetoothManager.getAdapter().stopLeScan(leScanCallback);
@@ -171,31 +188,15 @@ public class MainActivity extends Activity {
                 button.setText(getResources().getString(R.string.button_start));
 
                 BluetoothDevice device = item.getDevice();
-                deviceName = device.getName();
-
+                mDevice = device;
                 bleDeviceAdapter.clearList();
                 bleDeviceAdapter.notifyDataSetChanged();
-                if (operation.equalsIgnoreCase("pair")) {
-                    Log.d("AD","case of pair operation");
-                    BleReceivedService.getInstance().connectDevice(device);
-                } else if (operation.equalsIgnoreCase("data")) {
-                    final BluetoothDevice bdevice = device;
-                    Log.d("AD","case of data operation");
-                      runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        doStopLeScan();
-                        try {
-                            Thread.sleep(50);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                        Log.d("Sim","Connecting device");
-                        BleReceivedService.getInstance().connectDevice(bdevice);
-                    }
-                });
+                //Move over to the next Activity
+                Intent intent = new Intent(getBaseContext(), PairConnectActivity.class);
+                intent.putExtra("btdevice",device);
+                startActivityForResult(intent, BLUETOOTH_ACTION_CHOSEN);
 
-                }
+
 
 
             }
@@ -235,35 +236,52 @@ public class MainActivity extends Activity {
     private final View.OnClickListener onClickListener = new View.OnClickListener() {
         @Override
         public void onClick(final View v) {
-                if (operation == null) {
+            Log.d("AD","entered the onStart location button click");
+            BluetoothManager bluetoothManager = (BluetoothManager)getSystemService(BLUETOOTH_SERVICE);
+            final BluetoothLeScanner bluetoothLeScanner = bluetoothManager.getAdapter().getBluetoothLeScanner();
+            ScanFilter bpUuid = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(BloodPressureService.toString())).build();
+            ScanFilter wsUuid = new ScanFilter.Builder().setServiceUuid(ParcelUuid.fromString(WeightScaleService.toString())).build();
+
+            ArrayList scanFilterList = new ArrayList();
+            scanFilterList.add(bpUuid);
+            scanFilterList.add(wsUuid);
+            ScanSettings scanSettings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_BALANCED).build();
+
+
+               /* if (operation == null) {
                     Toast.makeText(getApplicationContext(), "Please click on the Pair or Take Reading button", Toast.LENGTH_SHORT).show();
                     return;
                 } else {
                     Log.d("AD","The value of operation is " + operation);
                     pairButton.setVisibility(View.GONE);
                     dataButton.setVisibility(View.GONE);
-                }
+                }*/
 
 
-            v.setEnabled(false);
+        /*   v.setEnabled(false);
             new Handler().postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     v.setEnabled(true);
                 }
-            }, 200);
-            if (!isStartedScan) {
-//                bluetoothManager.getAdapter().startLeScan(new UUID[]{AndCustomService.ServiceUuid},leScanCallback);
-                bluetoothManager.getAdapter().startLeScan(leScanCallback);
-                isStartedScan = true;
+            }, 200);*/
+           Button button = (Button) findViewById(R.id.startButton);
 
-                Button button = (Button) findViewById(R.id.startButton);
+            // if (!isStartedScan) {
+           if (button.getText().toString().equalsIgnoreCase("Start")) {
+                Log.d("AD","Entered case of startLeScan false");
+//              bluetoothManager.getAdapter().startLeScan(new UUID[]{AndCustomService.ServiceUuid},leScanCallback);
+               // bluetoothManager.getAdapter().startLeScan(leScanCallback);
+                bluetoothLeScanner.startScan(scanFilterList, scanSettings, scanCallback);
+                isStartedScan = true;
                 button.setText(getResources().getString(R.string.button_stop));
             }
             else {
-                bluetoothManager.getAdapter().stopLeScan(leScanCallback);
+               // bluetoothManager.getAdapter().stopLeScan(leScanCallback);
+
+                Log.d("AD","Entered case of startLeScan true");
                 isStartedScan = false;
-                Button button = (Button) findViewById(R.id.startButton);
+                bluetoothLeScanner.stopScan(scanCallback);
                 button.setText(getResources().getString(R.string.button_start));
                 bleDeviceAdapter.clearList();
                 bleDeviceAdapter.notifyDataSetChanged();
@@ -279,7 +297,7 @@ public class MainActivity extends Activity {
             final String deviceMacAddress = device.getAddress();
             final int deviceRssi = rssi;
             final BluetoothDevice bleDevice = device;
-            Log.d("AD","Entered the onLeScan function");
+            Log.d("AD","Entered the onLeScan function and device received is " + device.getName());
             new Handler(Looper.getMainLooper()).post(new Runnable() {
 
                 @Override
@@ -287,6 +305,35 @@ public class MainActivity extends Activity {
                     BleDeviceItem item = new BleDeviceItem();
                     item.setDevice(bleDevice);
                     item.setRssi(deviceRssi);
+
+                    deviceInfoMap.put(deviceMacAddress, item);
+
+                    bleDeviceAdapter.refreshKeys();
+                    bleDeviceAdapter.notifyDataSetChanged();
+
+                }
+            });
+        }
+
+    };
+
+    private ScanCallback scanCallback = new ScanCallback()  {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result)  {
+            final BluetoothDevice bleDevice = result.getDevice();
+            final String deviceMacAddress = bleDevice.getAddress();
+            final String deviceName = bleDevice.getName();
+         //   final int deviceRssi = rssi;
+
+            Log.d("AD","Entered the onLeScan function and device received is " + bleDevice.getName());
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+
+                @Override
+                public void run() {
+                    BleDeviceItem item = new BleDeviceItem();
+                    item.setDevice(bleDevice);
+                   // item.setRssi(deviceRssi);
+                    item.setDeviceName(deviceName);
 
                     deviceInfoMap.put(deviceMacAddress, item);
 
@@ -375,7 +422,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            doStartLeScan();
+          //  doStartLeScan();
         }
     };
 
@@ -387,6 +434,7 @@ public class MainActivity extends Activity {
     };
 
     private void doStartLeScan() {
+        Log.d("AD","setting the scan to true here");
         isStartedScan = true;
         doTryLeScan();
     }
@@ -405,6 +453,7 @@ public class MainActivity extends Activity {
             if (BleReceivedService.getInstance().isConnectedDevice()) {
                 BleReceivedService.getInstance().disconnectDevice();
             }
+
             isStartedScan = true;
 
             runOnUiThread(new Runnable() {
@@ -416,6 +465,57 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode,
+                                    Intent data) {
+        if (requestCode == BLUETOOTH_ACTION_CHOSEN) {
+            if (resultCode == RESULT_OK) {
+                // A contact was picked.  Here we will just display it
+                // to the user.
+                String operation = data.getStringExtra("operation");
+                final BluetoothDevice btDevice = data.getExtras().getParcelable("btdevice");
+                if (operation.equalsIgnoreCase("pair")) {
+                    Log.d("AD","case of pair operation chosen");
+
+                    final BluetoothLeScanner bluetoothLeScanner = bluetoothManager.getAdapter().getBluetoothLeScanner();
+                    isStartedScan = false;
+                    bluetoothLeScanner.stopScan(scanCallback);
+                    if (mDevice != null) {
+                        BleReceivedService.getInstance().connectDevice(mDevice);
+                    }
+
+                } else if (operation.equalsIgnoreCase("data")) {
+
+                    final BluetoothLeScanner bluetoothLeScanner = bluetoothManager.getAdapter().getBluetoothLeScanner();
+                    isStartedScan = false;
+                    bluetoothLeScanner.stopScan(scanCallback);
+
+                    Log.d("AD","case of data operation chosen");
+                      runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                       // doStopLeScan();
+                        try {
+                            Thread.sleep(50);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        if (mDevice != null) {
+                            BleReceivedService.getInstance().connectDevice(mDevice);
+                        }
+
+                    }
+                });
+
+                }
+
+            }
+        }
+    }
+
+    public static UUID uuidFromShortString(String uuid) {
+        return UUID.fromString(String.format("0000%s-0000-1000-8000-00805f9b34fb", uuid));
     }
 
 }

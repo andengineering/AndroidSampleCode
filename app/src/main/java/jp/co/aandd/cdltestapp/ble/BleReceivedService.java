@@ -114,7 +114,7 @@ public class BleReceivedService extends Service {
 
         public boolean connectDevice(BluetoothDevice device) {
             final BluetoothDevice bdevice = device;
-            Log.d(TAG, "connectDevice device " + device);
+            Log.d(TAG, "connectDevice device name " + device.getName());
             if (device == null) {
                 return false;
             }

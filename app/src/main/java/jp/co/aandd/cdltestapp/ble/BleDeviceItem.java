@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothDevice;
 public class BleDeviceItem {
     private BluetoothDevice mDevice;
     private int mRssi;
+    private String mDeviceName;
 
 
     public void setDevice(BluetoothDevice device) {
@@ -24,5 +25,13 @@ public class BleDeviceItem {
 
     public int getRssi() {
         return mRssi;
+    }
+
+    public void setDeviceName(String name) {
+        mDeviceName = name;
+    }
+
+    public String getDeviceName() {
+        return mDeviceName;
     }
 }
