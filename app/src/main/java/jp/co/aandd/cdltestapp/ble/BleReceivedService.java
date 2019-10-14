@@ -35,6 +35,7 @@ public class BleReceivedService extends Service {
         private static final String TAG = "SN";
 
         public static final String ACTION_BLE_SERVICE = "jp.co.aandd.andblelink.ble.BLE_SERVICE";
+        public static final String ACTION_BLE_DATA_RECEIVED = "jp.co.aandd.andblelink.ble.data_received";
         private static BleReceivedService bleService;
         private BluetoothGatt bluetoothGatt;
         private boolean isConnectedDevice;
@@ -177,6 +178,12 @@ public class BleReceivedService extends Service {
                         }
                     } else if(operation.equalsIgnoreCase("data")) {
                         if (BleReceivedService.getGatt() != null) {
+                            Log.d("AD","calling the discover services");
+                            BleReceivedService.getGatt().discoverServices();
+                        }
+
+
+                         /*if (BleReceivedService.getGatt() != null) {
                             //BleReceivedService.getGatt().discoverServices();
                             uiThreadHandler.postDelayed(new Runnable() {
                                 @Override
@@ -189,7 +196,7 @@ public class BleReceivedService extends Service {
 
                                 }
                             }, 2000);
-                        }
+                        }  */
                     }
 
                 }
@@ -215,7 +222,14 @@ public class BleReceivedService extends Service {
                     setupDateTime(gatt);
                 } else if (operation.equalsIgnoreCase("data")){
                     Log.d(TAG,"entered case of onservice discovered with data");
-                    if (BleReceivedService.getInstance() != null) {
+
+                  /*  boolean writeResult =setIndication(gatt, true);
+                    if(writeResult == false) {
+                        Log.d(TAG, "Write Error");
+
+                    }*/
+
+                   if (BleReceivedService.getInstance() != null) {
                         uiThreadHandler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
@@ -379,6 +393,7 @@ public class BleReceivedService extends Service {
                 characteristic = service.getCharacteristic(uuid);
                 if(characteristic != null)break;
             }
+            Log.d("Sim","the characteristic found is " + characteristic.getUuid().toString());
             return characteristic;
         }
 
@@ -387,6 +402,7 @@ public class BleReceivedService extends Service {
             if (gatt != null) {
                 BluetoothGattService service = BleReceivedService.getInstance().getGattSearvice(gatt);
                 if(service != null) {
+                    Log.d("AD","the service for which we are setting notification is " + service.getUuid().toString());
                     BluetoothGattCharacteristic characteristic = BleReceivedService.getInstance().getGattMeasuCharacteristic(service);
                     if(characteristic != null) {
 
@@ -416,7 +432,7 @@ public class BleReceivedService extends Service {
         public void parseCharcteristicValue(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
 
             if (ADGattUUID.AndCustomWeightScaleMeasurement.equals(characteristic.getUuid())) {
-                Log.d("Sim","reading for WS received");
+                Log.d("AD","reading for WS received");
                 int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
                 String flagString = Integer.toBinaryString(flag);
                 int offset=0;
@@ -476,9 +492,16 @@ public class BleReceivedService extends Service {
 
 
             else if (ADGattUUID.BloodPressureMeasurement.equals(characteristic.getUuid())) {
-                Log.d("Sim","reading for BP is received");
+                Log.d("AD","reading for BP is received");
                 int flag = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
                 String flagString = Integer.toBinaryString(flag);
+                String systolic = "";
+                String diastolic = "";
+                String pulse = "";
+                String systolic_display = "";
+                String diastolic_display = "";
+                String pulse_display = "";
+
                 int offset=0;
                 for(int index = flagString.length(); 0 < index ; index--) {
                     String key = flagString.substring(index-1 , index);
@@ -497,10 +520,17 @@ public class BleReceivedService extends Service {
                         // Unit
                         offset+=1;
                         Log.d("SN", "Systolic :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
+                        systolic = String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
+                        systolic_display = String.format("%.0f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
                         offset+=2;
+
                         Log.d("SN", "Diastolic :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
+                        diastolic = String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
+                        diastolic_display = String.format("%.0f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
                         offset+=2;
+
                         Log.d("SN", "Mean Arterial Pressure :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
+
                         offset+=2;
                     }
                     else if(index == flagString.length()-1) {
@@ -529,6 +559,8 @@ public class BleReceivedService extends Service {
                         if(key.equals("1")) {
                             // Pulse Rate
                             Log.d("SN", "Pulse Rate :"+String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset)));
+                            pulse = String.format("%f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
+                            pulse_display = String.format("%.0f", characteristic.getFloatValue(BluetoothGattCharacteristic.FORMAT_SFLOAT, offset));
                             offset+=2;
                         }
                     }
@@ -570,7 +602,12 @@ public class BleReceivedService extends Service {
                         }
                     }
                 }
-
+                 Intent intent = new Intent();
+                intent.setAction("jp.co.aandd.andblelink.ble.data_received");
+                intent.putExtra("Systolic", systolic_display);
+                intent.putExtra("Diastolic", diastolic_display);
+                intent.putExtra("Pulse", pulse_display);
+                sendBroadcast(intent);
 
             }
             else if (ADGattUUID.WeightScaleMeasurement.equals(characteristic.getUuid())) {

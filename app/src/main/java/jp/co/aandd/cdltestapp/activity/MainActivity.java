@@ -2,6 +2,7 @@ package jp.co.aandd.cdltestapp.activity;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
@@ -9,9 +10,11 @@ import android.bluetooth.BluetoothManager;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -20,13 +23,16 @@ import android.os.Looper;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.Switch;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -49,6 +55,7 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.bluetooth.BluetoothManager;
+import android.app.AlertDialog;
 
 public class MainActivity extends Activity {
 
@@ -70,6 +77,7 @@ public class MainActivity extends Activity {
     public static final UUID WeightScaleService = uuidFromShortString("181d");
 
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -82,7 +90,6 @@ public class MainActivity extends Activity {
         initUserSwitch();
         doStartService();
         bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
-
 
         //Add check CDL version.
         Toast.makeText(this, "Ver.1108", Toast.LENGTH_LONG).show();
@@ -153,7 +160,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        //unregisterReceiver(broadcastReceiver); //Register this receiver later
+        if (mIsBleReceiver) {
+            unregisterReceiver(bleServiceReceiver);
+            mIsBleReceiver = false;
+        }
     }
 
     private void initDeviceInfoMap() {
@@ -347,13 +357,6 @@ public class MainActivity extends Activity {
     };
 
 
-    private BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-
-        }
-    };
 
 
 
@@ -384,6 +387,7 @@ public class MainActivity extends Activity {
         startService(intent1);
         if (!mIsBleReceiver) {
             IntentFilter filter = new IntentFilter(BleReceivedService.ACTION_BLE_SERVICE);
+            filter.addAction(BleReceivedService.ACTION_BLE_DATA_RECEIVED);
             registerReceiver(bleServiceReceiver, filter);
             mIsBleReceiver = true;
         }
@@ -429,6 +433,55 @@ public class MainActivity extends Activity {
     private final BroadcastReceiver bleServiceReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d("AD","the action received is " + action);
+            if (action.equalsIgnoreCase(BleReceivedService.ACTION_BLE_DATA_RECEIVED)) {
+                Log.d("AD","Received the Blood Pressure data");
+                String systolic = intent.getStringExtra("Systolic");
+                String diastolic = intent.getStringExtra("Diastolic");
+                String pulse = intent.getStringExtra("Pulse");
+
+                 //Create this custom Dialog box to display the values
+                AlertDialog alertDialog = new AlertDialog.Builder(context).create();
+                // Set Custom Title
+                TextView title = new TextView(context);
+                // Title Properties
+                title.setText("Blood Pressure Readings");
+                title.setPadding(10, 10, 10, 10);   // Set Position
+                title.setGravity(Gravity.CENTER);
+                title.setTextColor(Color.BLACK);
+                title.setTextSize(23);
+                alertDialog.setCustomTitle(title);
+
+                // Set Message
+                TextView msg = new TextView(context);
+                // Message Properties
+                msg.setText("Systolic:    " + systolic + " mmHg" + "\n" + "Diastolic:    " +diastolic + " mmHg" + "\n" + "Pulse:    " +pulse + " mmHg" );
+                msg.setGravity(Gravity.CENTER_HORIZONTAL);
+                msg.setTextColor(Color.BLACK);
+                msg.setTextSize(20);
+                alertDialog.setView(msg);
+
+                alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL,"OK", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        // Perform Action on Button
+                        dialog.dismiss();
+                    }
+                });
+
+                new Dialog(getApplicationContext());
+                alertDialog.show();
+
+                final Button okBT = alertDialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+                LinearLayout.LayoutParams neutralBtnLP = (LinearLayout.LayoutParams) okBT.getLayoutParams();
+                neutralBtnLP.gravity = Gravity.FILL_HORIZONTAL;
+                okBT.setGravity(Gravity.CENTER);
+               // okBT.setPadding(50, 10, 10, 10);   // Set Position
+                okBT.setTextColor(Color.BLUE);
+                okBT.setLayoutParams(neutralBtnLP);
+
+
+            }
 
         }
     };
@@ -492,7 +545,11 @@ public class MainActivity extends Activity {
                     bluetoothLeScanner.stopScan(scanCallback);
 
                     Log.d("AD","case of data operation chosen");
-                      runOnUiThread(new Runnable() {
+                    if (mDevice != null) {
+                        BleReceivedService.getInstance().connectDevice(mDevice);
+                    }
+
+                   /*   runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
                        // doStopLeScan();
@@ -506,7 +563,7 @@ public class MainActivity extends Activity {
                         }
 
                     }
-                });
+                }); */
 
                 }
 
@@ -517,6 +574,9 @@ public class MainActivity extends Activity {
     public static UUID uuidFromShortString(String uuid) {
         return UUID.fromString(String.format("0000%s-0000-1000-8000-00805f9b34fb", uuid));
     }
+
+
+
 
 }
 
